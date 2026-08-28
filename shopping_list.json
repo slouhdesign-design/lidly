@@ -1,5 +1,5 @@
 [
-  {"name": "melk", "qty": 2},
-  {"name": "eieren", "qty": 1},
-  {"name": "kipfilet", "qty": 1}
+  {"name": "melk", "aliases": ["halfvolle melk", "volle melk", "milbona melk"], "qty": 2},
+  {"name": "eieren", "aliases": ["vrije uitloop eieren", "scharreleieren", "eierdoos"], "qty": 1},
+  {"name": "kipfilet", "aliases": ["kipfiletblokjes", "kip filet", "gerookte kipfilet"], "qty": 1}
 ]
