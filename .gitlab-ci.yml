@@ -1,0 +1,27 @@
+image: mcr.microsoft.com/playwright/python:v1.47.0-jammy
+
+stages:
+  - scrape
+  - deploy
+
+scrape:
+  stage: scrape
+  script:
+    - pip install playwright
+    - python scraper.py
+  artifacts:
+    paths:
+      - public/data.json
+      - debug/
+    expire_in: 7 days
+
+pages:
+  stage: deploy
+  needs: ["scrape"]
+  script:
+    - echo "Publishing to GitLab Pages"
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
