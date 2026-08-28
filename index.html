@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>Boodschappenlijst — Lidl</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --paper: #fdfaf3;
+    --ink: #1f2318;
+    --ink-soft: #6b6a5e;
+    --deal: #c0392b;
+    --line: #d8d4c4;
+    --stamp: #2f5233;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #e9e6da;
+    font-family: 'Courier New', ui-monospace, monospace;
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px;
+  }
+  .receipt {
+    background: var(--paper);
+    width: 100%;
+    max-width: 420px;
+    padding: 28px 24px 36px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+    position: relative;
+  }
+  .receipt::before, .receipt::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0;
+    height: 10px;
+    background:
+      linear-gradient(135deg, var(--paper) 50%, transparent 50%) 0 0,
+      linear-gradient(-135deg, var(--paper) 50%, transparent 50%) 0 0;
+    background-size: 14px 20px;
+    background-color: #e9e6da;
+  }
+  .receipt::before { top: -10px; }
+  .receipt::after { bottom: -10px; transform: rotate(180deg); }
+
+  h1 {
+    text-align: center;
+    font-size: 20px;
+    letter-spacing: 4px;
+    margin: 0 0 2px;
+  }
+  .sub {
+    text-align: center;
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-bottom: 18px;
+  }
+  .updated {
+    text-align: center;
+    font-size: 10px;
+    color: var(--ink-soft);
+    margin-bottom: 20px;
+    border-bottom: 1px dashed var(--line);
+    padding-bottom: 14px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px 10px;
+    font-size: 13px;
+    padding: 8px 0;
+    border-bottom: 1px dotted var(--line);
+    align-items: baseline;
+  }
+  .row .name { font-weight: bold; text-transform: capitalize; }
+  .row .qty { font-size: 10px; color: var(--ink-soft); grid-column: 1; }
+  .row .price { text-align: right; }
+  .row .price .old { text-decoration: line-through; color: var(--ink-soft); font-size: 10px; display: block; }
+  .row .price .cur { font-weight: bold; }
+  .row .price .cur.deal { color: var(--deal); }
+  .row .missing { color: var(--ink-soft); font-style: italic; font-size: 11px; }
+  .deal-tag {
+    display: inline-block;
+    font-size: 9px;
+    background: var(--deal);
+    color: white;
+    padding: 1px 5px;
+    border-radius: 2px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 2px solid var(--ink);
+    font-size: 17px;
+    font-weight: bold;
+  }
+  .stamp {
+    margin-top: 26px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--stamp);
+    border: 2px solid var(--stamp);
+    border-radius: 4px;
+    padding: 6px;
+    transform: rotate(-2deg);
+    letter-spacing: 2px;
+  }
+  .error {
+    text-align: center;
+    font-size: 12px;
+    color: var(--deal);
+    margin-top: 16px;
+  }
+  .barcode {
+    margin: 24px auto 0;
+    height: 34px;
+    width: 80%;
+    background: repeating-linear-gradient(90deg, var(--ink) 0 2px, transparent 2px 5px);
+  }
+</style>
+</head>
+<body>
+  <div class="receipt">
+    <h1>LIDL</h1>
+    <div class="sub">boodschappenlijst · Meppel</div>
+    <div class="updated" id="updated">laden…</div>
+    <div id="items"></div>
+    <div class="total-row">
+      <span>TOTAAL</span>
+      <span id="total">€0.00</span>
+    </div>
+    <div class="stamp" id="stamp" style="display:none">💰 BESPAARD OP DEALS</div>
+    <div class="barcode"></div>
+  </div>
+
+<script>
+async function load() {
+  const itemsEl = document.getElementById('items');
+  const updatedEl = document.getElementById('updated');
+  const totalEl = document.getElementById('total');
+  const stampEl = document.getElementById('stamp');
+
+  try {
+    const res = await fetch('data.json?t=' + Date.now());
+    if (!res.ok) throw new Error('no data.json yet');
+    const data = await res.json();
+
+    updatedEl.textContent = 'bijgewerkt: ' + data.generated_at;
+
+    let savedSomething = false;
+    itemsEl.innerHTML = data.items.map(item => {
+      if (!item.found) {
+        return `<div class="row">
+          <div class="name">${item.query}</div>
+          <div class="missing">niet gevonden</div>
+        </div>`;
+      }
+      if (item.on_deal) savedSomething = true;
+      const dealTag = item.on_deal ? '<span class="deal-tag">DEAL</span>' : '';
+      const oldPriceHtml = item.on_deal ? `<span class="old">${item.old_price}</span>` : '';
+      return `<div class="row">
+        <div class="name">${item.query}${dealTag}</div>
+        <div class="qty">${item.qty}x</div>
+        <div class="price">
+          ${oldPriceHtml}
+          <span class="cur ${item.on_deal ? 'deal' : ''}">€${item.subtotal.toFixed(2)}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    totalEl.textContent = '€' + data.total.toFixed(2);
+    stampEl.style.display = savedSomething ? 'block' : 'none';
+
+  } catch (e) {
+    itemsEl.innerHTML = '';
+    updatedEl.textContent = '';
+    document.querySelector('.error')?.remove();
+    const err = document.createElement('div');
+    err.className = 'error';
+    err.textContent = 'Nog geen data.json — run de GitHub Action eerst.';
+    itemsEl.after(err);
+  }
+}
+load();
+</script>
+</body>
+</html>
